@@ -189,7 +189,19 @@ func (a *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Username)
+	raw, fgp, err := utils.GenerateSecureFgp()
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"username": input.Username,
+			"reason":   err.Error(),
+			"ip":       c.ClientIP(),
+		}).Error("failed to generate fingerprint for JWT")
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "login failed"})
+		return
+	}
+
+	token, err := utils.GenerateJWT(user.ID, user.Username, fgp)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"username": input.Username,
@@ -208,7 +220,8 @@ func (a *AuthHandler) Login(c *gin.Context) {
 		"ip":       c.ClientIP(),
 	}).Info("successful login")
 
-	c.SetCookie("token", token, 3600, "/", "localhost", false, true)
+	c.SetCookie(models.SecureFgp, raw, 3600, "/", "localhost", false, true)
+	c.SetCookie(models.JWTTokenKey, token, 3600, "/", "localhost", false, true)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login successful"})
 

@@ -21,14 +21,14 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 
 func (u *UserHandler) GetMe(c *gin.Context) {
 
-	userId, exists := c.Get(models.UserIdKey)
+	userID, exists := c.Get(models.UserIDKey)
 	if !exists {
 		logrus.Error("user not found in context despite passing auth middleware")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error occured"})
 		return
 	}
 
-	id, ok := userId.(float64)
+	id, ok := userID.(uint)
 	if !ok {
 		logrus.Error("invalid user ID in context")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error occured"})
@@ -38,8 +38,8 @@ func (u *UserHandler) GetMe(c *gin.Context) {
 	var user models.User
 	if err := u.db.First(&user, id).Error; err != nil {
 		logrus.WithFields(logrus.Fields{
-			"userId": id,
-			"error":   err.Error(),
+			models.UserIDKey: id,
+			"error":          err.Error(),
 		}).Error("user from ID not found")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error occured"})
 		return

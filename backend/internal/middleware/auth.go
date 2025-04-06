@@ -21,8 +21,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Extract secure fingerprint from cookies
+		fgp, err := getRawFgpFromRequest(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			c.Abort()
+			return
+		}
+
 		// Validate JWT token
-		claims, err := utils.ValidateToken(token)
+		claims, err := utils.ValidateToken(token, fgp)
 		if err != nil {
 			logrus.WithError(err).Info("invalid token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
@@ -30,27 +38,26 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Extract userID from claims
-		userId, ok := claims["sub"].(float64)
-		if !ok {
-			logrus.Error("invalid userId in token")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-			c.Abort()
-			return
-		}
-
-		c.Set(models.UserIdKey, userId)
+		c.Set(models.UserIDKey, claims.UserID)
 		c.Next()
 
 	}
 }
 
-// getTokenFromRequest extracts token from cookie or Authorization header
+// getTokenFromRequest extracts models.JWTTokenKey from cookie
 func getTokenFromRequest(c *gin.Context) (string, error) {
-	token, err := c.Cookie("token")
+	token, err := c.Cookie(models.JWTTokenKey)
 	if err == nil && token != "" {
 		return token, nil
 	}
+	return "", err
+}
 
+// getSecureFgpFromRequest extracts models.SecureFgp from cookie
+func getRawFgpFromRequest(c *gin.Context) (string, error) {
+	fgp, err := c.Cookie(models.SecureFgp)
+	if err == nil && fgp != "" {
+		return fgp, nil
+	}
 	return "", err
 }

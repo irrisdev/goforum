@@ -1,6 +1,9 @@
 package models
 
 const (
-	UserIdKey = "userId"
+	UserIDKey   = "userID"
 	UsernameKey = "username"
+	JWTTokenKey = "token"
+	SecureFgp   = "secureFgp"
+	JWTMaxAge = 15
 )

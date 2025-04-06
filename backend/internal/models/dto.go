@@ -18,17 +18,17 @@ type LoginRequest struct {
 // UserResponse represents the data returned for a user
 type UserResponse struct {
 	ID        uint      `json:"id"`
-    Username  string    `json:"username"`
-    Email     string    `json:"email"`
-    CreatedAt time.Time `json:"created_at"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ToUserResponse converts a User model to a UserResponse DTO
 func ToUserResponse(user User) UserResponse {
-    return UserResponse{
-        ID:        user.ID,
-        Username:  user.Username,
-        Email:     user.Email,
-        CreatedAt: user.CreatedAt,
-    }
+	return UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+	}
 }
