@@ -21,13 +21,13 @@ type TokenClaims struct {
 }
 
 // GenerateJWT created a new JWT token for a user
-func GenerateJWT(id uint, username string, fgp string) (string, error) {
+func GenerateJWT(id uint, username string) (string, error) {
 	// Create token with claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, TokenClaims{
 		UserID:   id,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        fgp,
+			// ID:        fgp,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(models.JWTMaxAge * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -43,7 +43,7 @@ func GenerateJWT(id uint, username string, fgp string) (string, error) {
 }
 
 // ValidateToken checks if a token is valid and returns the claims
-func ValidateToken(tokenString string, rawFgp string) (*TokenClaims, error) {
+func ValidateToken(tokenString string) (*TokenClaims, error) {
 	// Parse and validate the token, extra security to add ValidMethods
 	token, err := jwt.ParseWithClaims(tokenString, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate signing algortihim
@@ -58,19 +58,18 @@ func ValidateToken(tokenString string, rawFgp string) (*TokenClaims, error) {
 	}
 
 	// Check token validity
-	claims, ok := token.Claims.(*TokenClaims)
-	if !ok {
-		return nil, jwt.ErrTokenInvalidClaims
-	} 
-
-	validFgp, err := VerifySecureFgp(rawFgp, claims.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if validFgp && token.Valid {
+	if claims, ok := token.Claims.(*TokenClaims); ok && token.Valid {
 		return claims, nil
 	}
+
+	// validFgp, err := VerifySecureFgp(rawFgp, claims.ID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// if validFgp && token.Valid {
+	// 	return claims, nil
+	// }
 
 	return nil, jwt.ErrTokenUnverifiable
 

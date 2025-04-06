@@ -22,15 +22,15 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Extract secure fingerprint from cookies
-		fgp, err := getRawFgpFromRequest(c)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			c.Abort()
-			return
-		}
+		// fgp, err := getRawFgpFromRequest(c)
+		// if err != nil {
+		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		// 	c.Abort()
+		// 	return
+		// }
 
 		// Validate JWT token
-		claims, err := utils.ValidateToken(token, fgp)
+		claims, err := utils.ValidateToken(token)
 		if err != nil {
 			logrus.WithError(err).Info("invalid token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
