@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/irrisdev/goforum/internal/config"
 	"github.com/irrisdev/goforum/internal/models"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -21,14 +22,18 @@ type TokenClaims struct {
 }
 
 // GenerateJWT created a new JWT token for a user
-func GenerateJWT(id uint, username string) (string, error) {
+func GenerateJWT(user *models.User) (string, error) {
+
+	id := user.ID
+	username := user.Username
+
 	// Create token with claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, TokenClaims{
 		UserID:   id,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			// ID:        fgp,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(models.JWTMaxAge * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.JWTMaxAge)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	})
@@ -42,8 +47,8 @@ func GenerateJWT(id uint, username string) (string, error) {
 	return tokenString, nil
 }
 
-// ValidateToken checks if a token is valid and returns the claims
-func ValidateToken(tokenString string) (*TokenClaims, error) {
+// ValidateJWT checks if a token is valid and returns the claims
+func ValidateJWT(tokenString string) (*TokenClaims, error) {
 	// Parse and validate the token, extra security to add ValidMethods
 	token, err := jwt.ParseWithClaims(tokenString, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate signing algortihim

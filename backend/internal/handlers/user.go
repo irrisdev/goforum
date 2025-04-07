@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/irrisdev/goforum/internal/config"
 	"github.com/irrisdev/goforum/internal/models"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -21,7 +22,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 
 func (u *UserHandler) GetMe(c *gin.Context) {
 
-	userID, exists := c.Get(models.UserIDKey)
+	userID, exists := c.Get(config.UserIDKey)
 	if !exists {
 		logrus.Error("user not found in context despite passing auth middleware")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error occured"})
@@ -38,7 +39,7 @@ func (u *UserHandler) GetMe(c *gin.Context) {
 	var user models.User
 	if err := u.db.First(&user, id).Error; err != nil {
 		logrus.WithFields(logrus.Fields{
-			models.UserIDKey: id,
+			config.UserIDKey: id,
 			"error":          err.Error(),
 		}).Error("user from ID not found")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error occured"})

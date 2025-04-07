@@ -35,3 +35,14 @@ type Reply struct {
 	ThreadID  uint   `gorm:"not null"`
 	CreatedAt time.Time
 }
+
+// Represents a refresh token
+type RefreshToken struct {
+	ID        uint      `gorm:"primaryKey"`
+	Token     string    `gorm:"not null;index:idx_token_user,unique:idx_token_user"`
+	UserID    uint      `gorm:"not null;index:idx_token_user,unique:idx_token_user"`
+	User      User      `gorm:"foreignKey:UserID"`
+	ExpiresAt time.Time `gorm:"not null"`
+	IssuedAt  time.Time `gorm:"not null"`
+	IsRevoked bool      `gorm:"default:false"`
+}

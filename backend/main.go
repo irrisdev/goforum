@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/irrisdev/goforum/internal/handlers"
 	"github.com/irrisdev/goforum/internal/middleware"
 	"github.com/irrisdev/goforum/internal/models"
+	"github.com/irrisdev/goforum/internal/workers"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -25,7 +30,16 @@ func main() {
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&models.User{}, &models.Category{}, &models.Thread{}, &models.Reply{})
+	db.AutoMigrate(&models.User{}, &models.Category{}, &models.Thread{}, &models.Reply{}, &models.RefreshToken{})
+
+	// Initialise workers
+	tokenCleanupWorker := workers.NewTokenCleanupWorker(db)
+
+	// Create cancelable context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start workers
+	go tokenCleanupWorker.Start(ctx)
 
 	// Initialise handlers
 	authHandler := handlers.NewAuthHandler(db)
@@ -35,90 +49,74 @@ func main() {
 
 	// Start the server
 	router := gin.Default()
-
 	// router.Use(gin.Recovery())
 
 	// router.Use(middleware.LoggerMiddleware())
 
-	v1 := router.Group("/api")
+	// Public routes
+	publicRoutes := router.Group("/api")
 	{
-
-		// Auth endpoints
-		auth := v1.Group("/auth")
+		// Auth endpoints that require NO authentication
+		auth := publicRoutes.Group("/auth")
+		auth.Use(middleware.NoAuth()) // Ensure user is NOT logged in
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 		}
 
-		// Public category endpoints
-		categories := v1.Group("/categories")
-		{
-			categories.GET("")
-		}
+		publicRoutes.POST("/auth/refresh", authHandler.Refresh)
 
-		// Public thread endpoints
-		threads := v1.Group("/threads")
-		{
-			// threads?category_id={id} - List threads in a category
-			threads.GET("")
-
-			// Get a single thread
-			threads.GET("/:id")
-
-			// Get replies for a thread
-			threads.GET("/:id/replies")
-
-		}
-
-		// Protected Routes
-		protected := v1.Group("")
-		protected.Use(middleware.AuthMiddleware())
-		{
-
-			// User management
-			users := protected.Group("/users")
-			{
-				users.GET("/me", userHandler.GetMe)
-				users.PUT("/me")
-			}
-
-			// Protected category endpoints
-			categories := protected.Group("/categories")
-			{
-				categories.POST("")
-				categories.PUT("/:id")
-				categories.DELETE("/:id")
-
-			}
-
-			// Protected thread endpoints
-			threads := protected.Group("/threads")
-			{
-
-				// threads?category_id={id} - Post a thread to category, if category doesn't exist, create it
-				threads.POST("")
-
-				// Update a thread
-				threads.PUT("/:id")
-
-				// Delete a thread
-				threads.DELETE("/:id")
-
-				// Post a reply to a thread
-				threads.POST("/:id/replies")
-
-				// Update/Delete replies
-				threads.PUT("/:id/replies/:replyId")
-				threads.DELETE("/:id/replies/:replyId")
-			}
-
-		}
-
+		// Public read-only endpoints
+		// publicRoutes.GET("/categories", categoryHandler.GetCategories)
+		// publicRoutes.GET("/threads", threadHandler.GetThreads)
+		// publicRoutes.GET("/threads/:id", threadHandler.GetThread)
 	}
 
-	router.Run(":8080")
-	logrus.Info("Server started on :8080")
+	// Protected routes
+	protectedRoutes := router.Group("/api")
+	protectedRoutes.Use(middleware.AuthRequired()) // Ensure user is authenticated
+	{
+		// Auth endpoints that require authentication
+		protectedRoutes.POST("/auth/logout", authHandler.Logout)
 
+		// // User management
+		protectedRoutes.GET("/users/me", userHandler.GetMe)
+		// protectedRoutes.PUT("/users/me", userHandler.UpdateCurrentUser)
+
+		// // Protected category endpoints
+		// protectedRoutes.POST("/categories", categoryHandler.CreateCategory)
+		// protectedRoutes.PUT("/categories/:id", categoryHandler.UpdateCategory)
+		// protectedRoutes.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+
+		// // Protected thread endpoints
+		// protectedRoutes.POST("/threads", threadHandler.CreateThread)
+		// protectedRoutes.PUT("/threads/:id", threadHandler.UpdateThread)
+		// protectedRoutes.DELETE("/threads/:id", threadHandler.DeleteThread)
+
+		// // Protected reply endpoints
+		// protectedRoutes.POST("/threads/:id/replies", threadHandler.CreateReply)
+		// protectedRoutes.PUT("/replies/:id", threadHandler.UpdateReply)
+		// protectedRoutes.DELETE("/replies/:id", threadHandler.DeleteReply)
+	}
+
+	// Start server in a goroutine
+	go func() {
+		if err := router.Run(":8080"); err != nil {
+			logrus.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// Trigger cleanup for all background workers
+	cancel()
+
+	time.Sleep(2 * time.Second)
+
+	logrus.Info("Server stopped")
 }
 
 func init() {

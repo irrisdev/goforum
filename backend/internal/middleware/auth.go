@@ -1,63 +1,86 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/irrisdev/goforum/internal/models"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/irrisdev/goforum/internal/config"
 	"github.com/irrisdev/goforum/internal/utils"
-	"github.com/sirupsen/logrus"
 )
 
-// AuthMiddlware verifies JWT tokens and sets user info from token claims
-func AuthMiddleware() gin.HandlerFunc {
+// AuthRequired ensures the user is authenticated
+func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		// Extract token from cookies
+		// Extract token from request
 		token, err := getTokenFromRequest(c)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "authentication required",
+				"code":  "token_missing",
+			})
 			c.Abort()
 			return
 		}
 
-		// Extract secure fingerprint from cookies
-		// fgp, err := getRawFgpFromRequest(c)
-		// if err != nil {
-		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-		// 	c.Abort()
-		// 	return
-		// }
-
-		// Validate JWT token
-		claims, err := utils.ValidateToken(token)
+		// Validate token
+		claims, err := utils.ValidateJWT(token)
 		if err != nil {
-			logrus.WithError(err).Info("invalid token")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":   "token expired",
+					"code":    "token_expired",
+					"message": "please refresh your token",
+				})
+			} else {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "invalid token",
+					"code":  "token_invalid",
+				})
+			}
 			c.Abort()
 			return
 		}
 
-		c.Set(models.UserIDKey, claims.UserID)
+		c.Set(config.UserIDKey, claims.UserID)
+		c.Set(config.UsernameKey, claims.Username)
 		c.Next()
-
 	}
 }
 
-// getTokenFromRequest extracts models.JWTTokenKey from cookie
+// NoAuth ensures the user is NOT authenticated
+func NoAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Check if user is already authenticated
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token := authHeader[7:]
+			claims, err := utils.ValidateJWT(token)
+			if err == nil && claims != nil {
+				// User is already authenticated
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "you are already logged in",
+					"message": "please logout first",
+				})
+				c.Abort()
+				return
+			}
+		}
+
+		c.Next()
+	}
+}
+
+// getTokenFromRequest extracts Authorization Bearer
 func getTokenFromRequest(c *gin.Context) (string, error) {
-	token, err := c.Cookie(models.JWTTokenKey)
-	if err == nil && token != "" {
-		return token, nil
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		// Check if it's a Bearer token
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			return authHeader[7:], nil
+		}
 	}
-	return "", err
-}
-
-// getSecureFgpFromRequest extracts models.SecureFgp from cookie
-func getRawFgpFromRequest(c *gin.Context) (string, error) {
-	fgp, err := c.Cookie(models.SecureFgp)
-	if err == nil && fgp != "" {
-		return fgp, nil
-	}
-	return "", err
+	// No valid token found
+	return "", http.ErrNoCookie
 }

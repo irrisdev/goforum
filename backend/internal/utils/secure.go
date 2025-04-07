@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // GenerateRandomSecret creates a secure random string for JWT signing
@@ -18,7 +21,7 @@ func GenerateRandomSecret(length int) ([]byte, error) {
 
 // GenerateSecureFgp creates a secure fingerprint for CSRF protection
 func GenerateSecureFgp() (rawEncoded string, hashEncoded string, err error) {
-	// Generate 16 random bytes - 128 bit entropy 
+	// Generate 16 random bytes - 128 bit entropy
 	raw, err := GenerateRandomSecret(16)
 	if err != nil {
 		return "", "", err
@@ -33,8 +36,22 @@ func GenerateSecureFgp() (rawEncoded string, hashEncoded string, err error) {
 	return rawEncoded, hashEncoded, nil
 }
 
+// GenerateSecureStr creates a secure string for refresh tokens
+func GenerateSecureStr() (string, error) {
+	// Generate 32 random bytes - 256 bit entropy
+	raw, err := GenerateRandomSecret(32)
+	if err != nil {
+		return "", err
+	}
+
+	// Encode raw bytes
+	encoded := base64.StdEncoding.EncodeToString(raw[:])
+
+	return encoded, nil
+}
+
 // VerifySecureFgp verifies a fingerprint against its expected hash
-func VerifySecureFgp(encodedFgp string, encodedHash string) (bool, error){
+func VerifySecureFgp(encodedFgp string, encodedHash string) (bool, error) {
 
 	// Decode the stored hash from base64
 	rawFgp, err := base64.StdEncoding.DecodeString(encodedFgp)
@@ -52,5 +69,27 @@ func VerifySecureFgp(encodedFgp string, encodedHash string) (bool, error){
 	// Compare using constant-time comparison to prevent timing attacks
 	match := subtle.ConstantTimeCompare(recievedHash, expectedHash[:]) == 1
 
-    return match, nil
+	return match, nil
+}
+
+// HashPassword takes a plaintext password and returns a bcrypt hash
+func HashPassword(password string) (string, error) {
+	if password == "" {
+		return "", errors.New("password cannot be empty")
+	}
+
+	// generate the hash
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost+3)
+	if err != nil {
+		return "", err
+	}
+
+	// convert to string and return
+	return string(bytes), nil
+}
+
+// CheckPasswordHash compares a plaintext password with a hash
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
