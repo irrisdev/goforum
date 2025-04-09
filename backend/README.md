@@ -28,37 +28,12 @@ A modern, lightweight discussion forum backend built with Go.
 
 ## Technology Stack
 
-- **Language:** Go 1.x
+- **Language:** Go 1.23.5
 - **Web Framework:** Gin
 - **ORM:** GORM
 - **Database:** SQLite (easily adaptable to PostgreSQL/MySQL)
 - **Authentication:** JWT (JSON Web Tokens)
 - **Logging:** Logrus
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Authenticate and receive JWT
-
-### Public Endpoints
-- `GET /api/categories` - List all categories
-- `GET /api/threads` - List threads (filter by category_id)
-- `GET /api/threads/:id` - Get a specific thread
-- `GET /api/threads/:id/replies` - Get replies for a thread
-
-### Protected Endpoints
-- `GET /api/users/me` - Get current user profile
-- `PUT /api/users/me` - Update current user profile
-- `POST /api/categories` - Create a new category
-- `PUT /api/categories/:id` - Update a category
-- `DELETE /api/categories/:id` - Delete a category
-- `POST /api/threads` - Create a new thread
-- `PUT /api/threads/:id` - Update a thread
-- `DELETE /api/threads/:id` - Delete a thread
-- `POST /api/threads/:id/replies` - Post a reply
-- `PUT /api/threads/:id/replies/:replyId` - Update a reply
-- `DELETE /api/threads/:id/replies/:replyId` - Delete a reply
 
 ## Getting Started
 
@@ -98,28 +73,6 @@ Environment variables:
 - `JWT_SECRET` - Secret key for JWT signing
 - `LOG_LEVEL` - Logging level (debug, info, warn, error)
 - `GO_ENV` - Environment (development, production)
-
-## Project Structure
-
-```
-backend/
-├── internal/
-│   ├── constants/     - Application constants
-│   ├── handlers/      - Request handlers
-│   ├── middleware/    - Custom middleware
-│   ├── models/        - Data models and DTOs
-│   └── utils/         - Utility functions
-└── main.go            - Application entry point
-```
-
-## Development
-
-### Testing
-
-Run the test suite:
-```bash
-go test ./...
-```
 
 ### Common Tasks
 

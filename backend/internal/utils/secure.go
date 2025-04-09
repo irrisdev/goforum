@@ -90,6 +90,7 @@ func HashPassword(password string) (string, error) {
 
 // CheckPasswordHash compares a plaintext password with a hash
 func CheckPasswordHash(password, hash string) bool {
+	// Uses constant time comparison to mitigate side channel attack
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }

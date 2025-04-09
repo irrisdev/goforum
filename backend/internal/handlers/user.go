@@ -51,5 +51,5 @@ func (u *UserHandler) GetMe(c *gin.Context) {
 }
 
 func (u *UserHandler) UpdateMe(c *gin.Context) {
-
+	c.JSON(http.StatusNotImplemented, "not implemented")
 }

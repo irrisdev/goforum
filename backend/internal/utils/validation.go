@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// The following rules enforce input validation rules
+
 // ValidateEmail performs basic validation of an email address
 func ValidateEmail(email string) (bool, string) {
 	// Trim spaces
