@@ -13,8 +13,10 @@ type User struct {
 
 // Represents a category in the forum
 type Category struct {
-	ID   uint   `gorm:"primaryKey"`
-	Name string `gorm:"unique;not null"`
+	ID          uint   `gorm:"primaryKey"`
+	Name        string `gorm:"unique;size:50;not null;uniqueIndex"`
+	Description string `gorm:"size:200"`
+	CreatedAt   time.Time
 }
 
 // Represents a thread in the forum

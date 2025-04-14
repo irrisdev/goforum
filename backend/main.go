@@ -45,7 +45,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db)
 	categoryHandler := handlers.NewCategoryHandler(db)
-	// threadService := handlers.NewThreadHandler(db)
+	threadHandler := handlers.NewThreadHandler(db)
 
 	// Start the server
 	router := gin.Default()
@@ -68,7 +68,7 @@ func main() {
 
 		// Public read-only endpoints
 		publicRoutes.GET("/categories", categoryHandler.GetCategories)
-		// publicRoutes.GET("/threads", threadHandler.GetThreads)
+		publicRoutes.GET("/threads", threadHandler.GetThreads)
 		// publicRoutes.GET("/threads/:id", threadHandler.GetThread)
 	}
 
@@ -89,7 +89,7 @@ func main() {
 		// protectedRoutes.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 
 		// // Protected thread endpoints
-		// protectedRoutes.POST("/threads", threadHandler.CreateThread)
+		protectedRoutes.POST("/threads", threadHandler.CreateThread)
 		// protectedRoutes.PUT("/threads/:id", threadHandler.UpdateThread)
 		// protectedRoutes.DELETE("/threads/:id", threadHandler.DeleteThread)
 
@@ -101,7 +101,7 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		if err := router.Run("0.0.0.0:8080"); err != nil {
+		if err := router.Run(":8080"); err != nil {
 			logrus.Fatalf("Failed to start server: %v", err)
 		}
 	}()
